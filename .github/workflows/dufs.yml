@@ -29,7 +29,7 @@ jobs:
           chmod +x shell/dufs.sh
           ./shell/dufs.sh
 
-      - name: 📦 收集并打包 ipk
+      - name: 📦 收集 ipk
         id: pack
         run: |
           mkdir -p output
@@ -55,14 +55,12 @@ jobs:
 
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-          cd output && tar -czf "dufs-${VERSION}_${PLATFORM}.tar.gz" *.ipk
-
       - name: 📤 上传到 Release
         uses: softprops/action-gh-release@v2.1.0
         with:
-          tag_name: "Dufs-${{ steps.pack.outputs.version }}"
-          name: "Dufs-${{ steps.pack.outputs.version }}"
-          files: output/*.tar.gz
+          tag_name: "dufs"
+          name: "dufs"
+          files: output/*.ipk
           token: ${{ secrets.GITHUB_TOKEN }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
