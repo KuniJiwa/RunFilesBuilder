@@ -1,7 +1,17 @@
+#=================================================
+# https://github.com/wukongdaily/RunFilesBuilder
+# Description: Build RunFiles using GitHub Actions
+# Lisence: MIT
+# Author: wukongdaily
+# Blog: wkdaily.cpolar.cn
+#=================================================
 name: Make Dufs ipk package
 
 on:
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   make-run:
