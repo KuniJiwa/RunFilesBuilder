@@ -48,7 +48,6 @@ jobs:
         with:
           tag_name: "argon-${{ steps.pack.outputs.version }}"
           name: "argon-${{ steps.pack.outputs.version }}"
-          body_path: ${{ github.workspace }}/common.md
           files: output/*.ipk
           token: ${{ secrets.GITHUB_TOKEN }}
         env:
