@@ -5,7 +5,7 @@
 # Author: wukongdaily
 # Blog: wkdaily.cpolar.cn
 #=================================================
-name: Make Dufs run files
+name: Make Dufs ipk package
 
 on:
   workflow_dispatch:
@@ -18,30 +18,33 @@ jobs:
       - name: 📥 Checkout
         uses: actions/checkout@v3
 
-      - name: 📦 安装 makeself 工具
-        run: sudo apt-get update && sudo apt-get install -y makeself curl
+      - name: 📦 安装依赖
+        run: sudo apt-get update && sudo apt-get install -y curl
 
-      - name: 🚀 下载 dufs的所有ipk
+      - name: 🚀 下载 dufs 的所有 ipk
         run: |
           chmod +x shell/dufs.sh
           ./shell/dufs.sh
 
-      - name: 📋 拷贝 install.sh 到各平台目录
-        run: |
-          chmod +x shell/install.sh
-          cp shell/install.sh x86_64/install.sh
-          cp shell/install.sh aarch64_generic/install.sh
-          cp shell/install.sh aarch64_cortex-a53/install.sh
-
-      - name: 🔍 提取版本号并打包
+      - name: 📦 收集并打包 ipk
         id: pack
         run: |
           mkdir -p output
 
-          # 获取版本
-          DUFS_IPK=$(ls aarch64_generic/dufs_*.ipk | head -n 1)
-          VERSION=$(basename "$DUFS_IPK" | sed -n 's/^dufs_\([^-]*-[^_]*\)_.*$/\1/p')
+          if [ -d "aarch64_cortex-a53" ] && [ -n "$(ls aarch64_cortex-a53/*.ipk 2>/dev/null)" ]; then
+            PLATFORM="aarch64_cortex-a53"
+          elif [ -d "aarch64_generic" ] && [ -n "$(ls aarch64_generic/*.ipk 2>/dev/null)" ]; then
+            PLATFORM="aarch64_generic"
+          else
+            echo "❌ 未找到可用架构的 ipk"
+            exit 1
+          fi
 
+          echo "使用架构: $PLATFORM"
+          cp "$PLATFORM"/*.ipk output/
+
+          DUFS_IPK=$(ls output/dufs_*.ipk | head -n 1)
+          VERSION=$(basename "$DUFS_IPK" | sed -n 's/^dufs_\([^-]*-[^_]*\)_.*$/\1/p')
           if [ -z "$VERSION" ]; then
             echo "❌ 无法提取版本号"
             exit 1
@@ -49,18 +52,14 @@ jobs:
 
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-          # 打包两个平台
-          for PLATFORM in x86_64 aarch64_generic aarch64_cortex-a53; do
-            makeself "$PLATFORM" "output/dufs-${VERSION}_${PLATFORM}.run" \
-              "Dufs ${PLATFORM} Installer v${VERSION}" ./install.sh
-          done
+          cd output && tar -czf "dufs-${VERSION}_${PLATFORM}.tar.gz" *.ipk
 
-      - name: 📤 上传 .run 文件到 release
+      - name: 📤 上传到 Release
         uses: softprops/action-gh-release@v2.1.0
         with:
           tag_name: "Dufs-${{ steps.pack.outputs.version }}"
           name: "Dufs-${{ steps.pack.outputs.version }}"
-          files: output/*.run
+          files: output/*.tar.gz
           token: ${{ secrets.GITHUB_TOKEN }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
