@@ -48,7 +48,6 @@ jobs:
         with:
           tag_name: "iStore-${{ steps.pack.outputs.version }}"
           name: "iStore-${{ steps.pack.outputs.version }}"
-          body_path: ${{ github.workspace }}/info/store.md
           files: output/*.ipk
           token: ${{ secrets.GITHUB_TOKEN }}
         env:
