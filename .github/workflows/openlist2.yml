@@ -1,12 +1,12 @@
 #=================================================
 # https://github.com/wukongdaily/RunFilesBuilder
-# Description: Build RunFiles using GitHub Actions
+# Description: Build pure ipk tar.gz archive using GitHub Actions
 # Lisence: MIT
 # Author: wukongdaily
 # Blog: wkdaily.cpolar.cn
 #=================================================
 
-name: Make Openlist2 Run File
+name: Make Openlist2 Pure IPK Archive
 
 on:
   workflow_dispatch:
@@ -25,9 +25,6 @@ jobs:
           latest_tag=$(curl -s https://api.github.com/repos/sbwml/luci-app-openlist2/releases/latest | jq -r '.tag_name')
           echo "LATEST_TAG=$latest_tag" >> $GITHUB_ENV
           
-      - name: Clone makeself repository
-        run: git clone https://github.com/megastep/makeself.git
-
       - name: Download latest openlist2 files
         run: |
           # 下载最新 release 的两个架构包
@@ -73,40 +70,24 @@ jobs:
           done
           popd >/dev/null
           
-      - name: Create install.sh scripts
+      - name: Build pure ipk tar.gz for each arch
         run: |
-          cat <<EOF > openlist2_x86_64/install.sh
-          #!/bin/sh
-          opkg update
-          if [ $? -ne 0 ]; then
-              echo "update failed。"
-              exit 1
-          fi
-          opkg install *.ipk
-          EOF
-          chmod +x openlist2_x86_64/install.sh
-          cp openlist2_x86_64/install.sh openlist2_aarch64_cortex-a53/install.sh
+          mkdir -p output
+          # x86_64 打包
+          tar -zcf output/openlist2_${{ env.LATEST_TAG }}_x86_64.tar.gz -C openlist2_x86_64 .
+          # aarch64_cortex-a53 打包
+          tar -zcf output/openlist2_${{ env.LATEST_TAG }}_aarch64_cortex-a53.tar.gz -C openlist2_aarch64_cortex-a53 .
           
-      - name: Move openlist2 directories to makeself
+      - name: Check archive file sizes
         run: |
-          mv openlist2_x86_64 makeself/
-          mv openlist2_aarch64_cortex-a53 makeself/
-      - name: Create self-extracting packages
-        run: |
-          cd makeself
-          ./makeself.sh openlist2_x86_64/ openlist2_${{ env.LATEST_TAG }}_x86_64.run "by github action" ./install.sh
-          ./makeself.sh openlist2_aarch64_cortex-a53/ openlist2_${{ env.LATEST_TAG }}_aarch64_cortex-a53.run "by github action" ./install.sh
+          ls -lh output/openlist2_*.tar.gz
           
-      - name: Check file sizes
-        run: |
-          ls -lh makeself/openlist2_*.run
-          
-      - name: Upload run files as release assets
+      - name: Upload tar.gz archives as release assets
         uses: softprops/action-gh-release@v2.1.0
         with:
           tag_name: openlist2
-          name: "luci-app-openlist2"
-          files: makeself/*.run
+          name: "luci-app-openlist2 Pure IPK Archive"
+          files: output/*.tar.gz
           token: ${{ secrets.GITHUB_TOKEN }}
           body: "[![Github](https://img.shields.io/badge/可套用国内加速站下载-FC7C0D?logo=github&logoColor=fff&labelColor=000&style=for-the-badge)](https://wkdaily.cpolar.cn/archives/1)"
         env:
