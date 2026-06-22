@@ -2,12 +2,10 @@
 set -e
 
 declare -A PLATFORMS=(
-  ["x86_64"]="https://mirrors.cernet.edu.cn/immortalwrt/releases/24.10.5/packages/x86_64"
   ["aarch64_generic"]="https://mirrors.cernet.edu.cn/immortalwrt/releases/24.10.5/packages/aarch64_generic"
   ["aarch64_cortex-a53"]="https://mirrors.cernet.edu.cn/immortalwrt/releases/24.10.5/packages/aarch64_cortex-a53"
 )
 
-# 各类包对应的目录
 declare -A PACKAGE_SOURCES=(
   ["luci-app-homeproxy"]="luci"
   ["luci-i18n-homeproxy-zh-cn"]="luci"
@@ -36,13 +34,11 @@ for platform in "${!PLATFORMS[@]}"; do
 
     echo "🔍 从 Packages.gz 查找 $keyword"
 
-    # 下载并解压 Packages.gz
     if ! curl -fsL "${URL}/Packages.gz" | gunzip -c > "$PKG_INDEX"; then
       echo "⚠️ 无法获取 ${URL}/Packages.gz"
       continue
     fi
 
-    # 从 Filename 字段中匹配 ipk
     FILE=$(awk -v kw="$keyword" '
       $1=="Filename:" && $2 ~ "^"kw".*\\.ipk$" {
         print $2; exit
@@ -53,7 +49,6 @@ for platform in "${!PLATFORMS[@]}"; do
       echo "⬇️ 正在下载: $FILE"
       curl -fsL -o "${SAVE_DIR}/${FILE##*/}" "${URL}/${FILE}"
 
-      # 🚧 文件名中含 ~ 的修正
       if [[ "$FILE" == *"~"* ]]; then
         NEW_FILE=$(basename "$FILE" | tr '~' '-')
         mv "${SAVE_DIR}/$(basename "$FILE")" "${SAVE_DIR}/${NEW_FILE}"
@@ -65,4 +60,4 @@ for platform in "${!PLATFORMS[@]}"; do
   done
 done
 
-echo "✅ 下载完成，文件已分别存入 x86_64、aarch64_generic、aarch64_cortex-a53 目录中。"
+echo "✅ 下载完成，文件已分别存入 aarch64_generic 与 aarch64_cortex-a53 目录中。"
