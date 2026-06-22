@@ -1,0 +1,63 @@
+#=================================================
+# https://github.com/wukongdaily/RunFilesBuilder
+# Description: Build RunFiles using GitHub Actions
+# Lisence: MIT
+# Author: wukongdaily
+# Blog: wkdaily.cpolar.cn
+#=================================================
+
+name: Make Passwall ipk package
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Fetch latest release tag from Passwall
+        id: fetch_latest_tag
+        run: |
+          latest_tag=$(curl -s https://api.github.com/repos/Openwrt-Passwall/openwrt-passwall/releases/latest | jq -r '.tag_name')
+          echo "LATEST_TAG=$latest_tag" >> $GITHUB_ENV
+          echo "tag=$latest_tag" >> $GITHUB_OUTPUT
+
+      - name: Download latest Passwall files (aarch64_cortex-a53 only)
+        run: |
+          mkdir -p downloads
+          cd downloads
+          curl -L -o passwall_packages_ipk_aarch64_cortex-a53.zip https://github.com/wkccd/storage/releases/download/pw/passwall_packages_ipk_aarch64_cortex-a53.zip
+          curl -LO "$(
+            curl -s https://api.github.com/repos/Openwrt-Passwall/openwrt-passwall/releases/latest \
+            | grep -oP '"browser_download_url":\s*"\K[^"]*23\.05-24\.10_luci-app-passwall_.*_all\.ipk'
+          )"
+          curl -L -O "$(
+            curl -s https://api.github.com/repos/Openwrt-Passwall/openwrt-passwall/releases/latest \
+            | jq -r '.assets[]
+              | select(.name | test("^23.05-24.10_luci-i18n-passwall-zh-cn_.*\\.ipk$"))
+              | .browser_download_url'
+          )"
+
+      - name: Organize files
+        run: |
+          mkdir -p output
+          unzip downloads/passwall_packages_ipk_aarch64_cortex-a53.zip -d output/
+          cp downloads/23*.ipk output/
+          rm -rf downloads
+
+      - name: Upload ipk files to release
+        uses: softprops/action-gh-release@v2.1.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ env.LATEST_TAG }}
+          name: "PassWall-${{ env.LATEST_TAG }}"
+          files: output/*.ipk
+          token: ${{ secrets.GITHUB_TOKEN }}
